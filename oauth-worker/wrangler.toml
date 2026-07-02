@@ -1,0 +1,8 @@
+name = "decap-oauth"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Client ID / Secret 不要寫在這裡！
+# 用指令設定為加密 Secret：
+#   npx wrangler secret put GITHUB_CLIENT_ID
+#   npx wrangler secret put GITHUB_CLIENT_SECRET
