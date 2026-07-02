@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decap CMS 示範站 · 最新消息</title>
+  <meta name="description" content="Decap CMS + Cloudflare Pages + GitHub 靜態網站示範" />
+  <style>
+    :root {
+      --bg: #fafaf9; --card: #fff; --ink: #1c1917; --muted: #78716c;
+      --accent: #0d9488; --border: #e7e5e4; --shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: var(--bg); color: var(--ink); line-height: 1.7;
+    }
+    header {
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      color: #fff; padding: 64px 24px; text-align: center;
+    }
+    header h1 { font-size: 2rem; margin-bottom: 8px; }
+    header p { opacity: .9; }
+    .admin-link {
+      display: inline-block; margin-top: 20px; padding: 10px 20px;
+      background: rgba(255,255,255,.15); color: #fff; text-decoration: none;
+      border: 1px solid rgba(255,255,255,.4); border-radius: 8px; font-size: .9rem;
+    }
+    .admin-link:hover { background: rgba(255,255,255,.25); }
+    main { max-width: 860px; margin: 0 auto; padding: 48px 24px; }
+    main > h2 { font-size: 1.3rem; margin-bottom: 24px; color: var(--muted); font-weight: 600; }
+    .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; box-shadow: var(--shadow); cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+    .card img { width: 100%; height: 150px; object-fit: cover; background: #f0f0ef; display: block; }
+    .card .body { padding: 18px; }
+    .card time { font-size: .8rem; color: var(--accent); font-weight: 600; }
+    .card h3 { font-size: 1.05rem; margin: 6px 0 8px; }
+    .card p { font-size: .9rem; color: var(--muted); }
+    .state { text-align: center; color: var(--muted); padding: 40px 0; }
+    /* 文章彈窗 */
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; padding: 24px; overflow-y: auto; }
+    .modal.open { display: flex; align-items: flex-start; justify-content: center; }
+    .modal-inner { background: #fff; max-width: 720px; width: 100%; margin: 40px 0; border-radius: 12px; padding: 40px; }
+    .modal-inner time { color: var(--accent); font-weight: 600; font-size: .85rem; }
+    .modal-inner h1 { font-size: 1.6rem; margin: 8px 0 24px; }
+    .modal-inner :is(h2,h3) { margin: 24px 0 8px; }
+    .modal-inner p { margin: 12px 0; }
+    .modal-inner ul, .modal-inner ol { margin: 12px 0 12px 24px; }
+    .modal-inner img { max-width: 100%; border-radius: 8px; }
+    .close { float: right; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); }
+    footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 40px 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Decap CMS 示範站</h1>
+    <p>純 HTML 靜態站 · GitHub 存內容 · Cloudflare Pages 部署</p>
+    <a class="admin-link" href="/admin/">✏️ 進入內容後台</a>
+  </header>
+
+  <main>
+    <h2>最新消息</h2>
+    <div id="grid" class="grid"></div>
+    <div id="state" class="state">載入中…</div>
+  </main>
+
+  <div id="modal" class="modal">
+    <div class="modal-inner">
+      <button class="close" onclick="closeModal()">×</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <footer>由 Decap CMS 管理 · H2ODreamer Studio 示範</footer>
+
+  <!-- 輕量 Markdown 轉 HTML -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script>
+    // ── 設定：改成你的 repo ─────────────────────────────
+    const OWNER  = "YOUR_GITHUB_USERNAME";
+    const REPO   = "YOUR_REPO";
+    const BRANCH = "main";
+    const DIR    = "content/news";
+    // ────────────────────────────────────────────────
+
+    const gridEl  = document.getElementById("grid");
+    const stateEl = document.getElementById("state");
+
+    // 解析 Markdown 檔頭的 frontmatter（--- 之間的 YAML）
+    function parseFrontmatter(raw) {
+      const m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+      if (!m) return { data: {}, body: raw };
+      const data = {};
+      m[1].split("\n").forEach(line => {
+        const i = line.indexOf(":");
+        if (i === -1) return;
+        const key = line.slice(0, i).trim();
+        let val = line.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+        data[key] = val;
+      });
+      return { data, body: m[2] };
+    }
+
+    async function load() {
+      try {
+        const listUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${DIR}?ref=${BRANCH}`;
+        const res = await fetch(listUrl);
+        if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+        const files = (await res.json()).filter(f => f.name.endsWith(".md"));
+
+        const posts = await Promise.all(files.map(async f => {
+          const raw = await (await fetch(f.download_url)).text();
+          return parseFrontmatter(raw);
+        }));
+
+        // 依日期新到舊排序
+        posts.sort((a, b) => (b.data.date || "").localeCompare(a.data.date || ""));
+
+        if (posts.length === 0) { stateEl.textContent = "還沒有任何消息。"; return; }
+        stateEl.style.display = "none";
+        gridEl.innerHTML = posts.map((p, i) => cardHtml(p, i)).join("");
+        window.__posts = posts;
+      } catch (e) {
+        stateEl.innerHTML = `載入失敗：${e.message}<br><small>請確認 index.html 上方的 OWNER / REPO 設定正確，且 repo 為 public。</small>`;
+      }
+    }
+
+    function cardHtml(p, i) {
+      const thumb = p.data.thumbnail
+        ? `<img src="${p.data.thumbnail}" alt="">` : "";
+      return `<article class="card" onclick="openModal(${i})">
+        ${thumb}
+        <div class="body">
+          <time>${p.data.date || ""}</time>
+          <h3>${p.data.title || "(無標題)"}</h3>
+          <p>${p.data.summary || ""}</p>
+        </div>
+      </article>`;
+    }
+
+    function openModal(i) {
+      const p = window.__posts[i];
+      document.getElementById("modal-content").innerHTML =
+        `<time>${p.data.date || ""}</time><h1>${p.data.title || ""}</h1>` +
+        marked.parse(p.body);
+      document.getElementById("modal").classList.add("open");
+    }
+    function closeModal() { document.getElementById("modal").classList.remove("open"); }
+    document.getElementById("modal").addEventListener("click", e => {
+      if (e.target.id === "modal") closeModal();
+    });
+
+    load();
+  </script>
+</body>
+</html>
