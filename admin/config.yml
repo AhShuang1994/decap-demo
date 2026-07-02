@@ -1,0 +1,36 @@
+# ── Decap CMS 設定檔 ───────────────────────────────────────────────
+# 路徑一律相對於 GitHub repo 的「根目錄」。
+# 部署方式：把 decap-cms-sample/ 內的檔案放到一個獨立 repo 的根目錄。
+
+backend:
+  name: github
+  repo: YOUR_GITHUB_USERNAME/YOUR_REPO   # ← 改成你的 repo，例：h2odreamer/decap-demo
+  branch: main
+  # base_url = 你部署好的 Cloudflare Worker 網址（不含結尾斜線）
+  base_url: https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev
+  auth_endpoint: /auth
+
+# 本地開發時可打開這行，不需 Worker 就能測介面（會用假資料，不寫入 GitHub）
+# local_backend: true
+
+# 圖片上傳位置（相對 repo 根目錄）與網頁引用路徑
+media_folder: "assets/uploads"
+public_folder: "/assets/uploads"
+
+# 語系
+locale: "zh_Hant"
+
+collections:
+  - name: "news"
+    label: "最新消息"
+    label_singular: "一則消息"
+    folder: "content/news"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    summary: "{{title}} — {{date | date('YYYY-MM-DD')}}"
+    fields:
+      - { label: "標題", name: "title", widget: "string" }
+      - { label: "發佈日期", name: "date", widget: "datetime", format: "YYYY-MM-DD" }
+      - { label: "封面圖", name: "thumbnail", widget: "image", required: false }
+      - { label: "摘要", name: "summary", widget: "text", required: false, hint: "顯示在首頁卡片上的簡短描述" }
+      - { label: "內文", name: "body", widget: "markdown" }
