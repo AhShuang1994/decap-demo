@@ -1,7 +1,7 @@
 ---
 title: 它是怎麼運作的？
 date: 2026-07-01
-thumbnail: https://thumbs.dreamstime.com/b/sample-stamp-white-background-sign-90532936.jpg
+thumbnail: /assets/uploads/convertico-candy-png.png
 summary: 客戶按下 Publish → 內容 commit 進 GitHub → Cloudflare Pages 自動 rebuild → 網站更新。全程免碰程式碼。
 ---
 
