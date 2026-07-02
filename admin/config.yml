@@ -4,10 +4,10 @@
 
 backend:
   name: github
-  repo: YOUR_GITHUB_USERNAME/YOUR_REPO   # ← 改成你的 repo，例：h2odreamer/decap-demo
+  repo: AhShuang1994/decap-demo   # ← 帳號/repo名（不要放完整網址、不要 .git）
   branch: main
   # base_url = 你部署好的 Cloudflare Worker 網址（不含結尾斜線）
-  base_url: https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev
+  base_url: https://decap-oauth.fastfix-demo.workers.dev
   auth_endpoint: /auth
 
 # 本地開發時可打開這行，不需 Worker 就能測介面（會用假資料，不寫入 GitHub）
